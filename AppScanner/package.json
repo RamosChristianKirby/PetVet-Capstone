@@ -1,25 +1,30 @@
 {
   "name": "appscanner",
   "license": "0BSD",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "main": "index.js",
+  "private": true,
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "build:web": "expo export --platform web --output-dir dist/web",
+    "build:android": "expo export --platform android --output-dir dist/android",
+    "build:ios": "expo export --platform ios --output-dir dist/ios"
   },
   "dependencies": {
-    "expo": "~52.0.23",
-    "expo-status-bar": "~2.0.0",
-    "react": "18.3.1",
-    "react-native": "0.76.5",
-    "react-dom": "18.3.1",
-    "react-native-web": "~0.19.13",
-    "@expo/metro-runtime": "~4.0.1"
+    "@expo/metro-runtime": "~58.0.16",
+    "expo": "~58.0.22",
+    "expo-splash-screen": "~58.0.12",
+    "expo-status-bar": "~58.0.4",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-native": "0.88.1",
+    "react-native-safe-area-context": "~5.10.1",
+    "react-native-web": "~0.21.4"
   },
   "devDependencies": {
-    "@babel/core": "^7.20.0"
-  },
-  "private": true
+    "@babel/core": "^7.29.0"
+  }
 }

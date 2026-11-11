@@ -7,14 +7,10 @@ export const useScrollTop = (threshold = 10) => {
 
   useEffect(() => {
     const handleScroll = () => {
-
       // Check if the vertical scroll position is greater than the threshold.
 
-      if (window.scrollY > threshold)
-        setScrolled(true);
-      else
-        setScrolled(false);
-
+      if (window.scrollY > threshold) setScrolled(true);
+      else setScrolled(false);
     };
 
     // Adding the scroll event listener when the component mounts.

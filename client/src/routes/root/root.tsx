@@ -1,19 +1,14 @@
 import { Outlet } from "react-router-dom";
-import { Navbar } from "../../components";
+import Navbar from "../../components/nav/Navbar";
 import { Footer } from "../home-page/components/Footer";
-
-// Root
-
-const Root = () => {
+export default function Root() {
   return (
-    <div className="flex flex-col min-h-screen bg-secondary text-black">
+    <div className="public-layout">
       <Navbar />
-      <main className="flex-grow pt-40">
+      <main>
         <Outlet />
       </main>
       <Footer />
     </div>
   );
-};
-
-export default Root;
+}

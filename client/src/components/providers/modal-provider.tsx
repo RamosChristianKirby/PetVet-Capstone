@@ -1,24 +1,19 @@
-import { useEffect, useState } from "react";
-
 import { SettingsModal } from "../modals/settings-modal";
 import { AddVisitModal } from "../modals/add-visit-modal";
 import { EditPetDetails } from "../modals/edit-pet-details-modal";
-
-// ModalProvider
-
+import { useEffect } from "react";
+import { useSettings } from "../../hooks/use-settings";
+import { useVisit } from "../../hooks/use-visit";
+import { useEditDetails } from "../../hooks/use-pet-details";
 export const ModalProvider = () => {
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  // Check if the component is not yet mounted, return null.
-
-  if (!isMounted) {
-    return null;
-  }
-
+  useEffect(
+    () => () => {
+      useSettings.getState().onClose();
+      useVisit.getState().onClose();
+      useEditDetails.getState().onClose();
+    },
+    [],
+  );
   return (
     <>
       <SettingsModal />

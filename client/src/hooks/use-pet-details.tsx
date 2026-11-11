@@ -1,31 +1,14 @@
-import { create } from "zustand"
-
-interface Vaccination {
-  date: Date
-  vaccinationType: string
-}
-
-type Pet = {
-  _id: string
-  name: string
-  vaccinationHistory: Vaccination[]
-  status: string
-}
-
-type PetDetailsStore = {
-  isOpen: boolean
-  pet: Pet | null
-  onOpen: (pet: Pet) => void
-  onClose: () => void
-}
-
-// useEditDetails
-
-export const useEditDetails = create<PetDetailsStore>((set) => ({
+import { create } from "zustand";
+import type { Pet } from "../lib/types";
+type State = {
+  isOpen: boolean;
+  pet: Pet | null;
+  onOpen: (pet: Pet) => void;
+  onClose: () => void;
+};
+export const useEditDetails = create<State>((set) => ({
   isOpen: false,
   pet: null,
-  onOpen: (pet) => {
-    set({ isOpen: true, pet: pet })
-  },
+  onOpen: (pet) => set({ isOpen: true, pet }),
   onClose: () => set({ isOpen: false, pet: null }),
-}))
+}));

@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import { Textarea } from "../../components/ui/textarea";
 
 interface EditorProps {
@@ -12,5 +12,5 @@ export function Editor({ onContentChange }: EditorProps) {
     onContentChange(event.target.value);
   };
 
-  return <Textarea placeholder="Add remarks..." onChange={handleChange} />
-};
+  return <Textarea placeholder="Add remarks..." onChange={handleChange} />;
+}

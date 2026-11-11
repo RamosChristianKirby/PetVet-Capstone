@@ -1,4 +1,3 @@
-import { Switch as HeadlessSwitch } from "@headlessui/react";
 import { cn } from "../../lib/utils";
 
 interface SwitchProps {
@@ -7,24 +6,31 @@ interface SwitchProps {
   disabled?: boolean;
 }
 
-export const Switch = ({ checked, onCheckedChange, disabled = false }: SwitchProps) => {
+export const Switch = ({
+  checked,
+  onCheckedChange,
+  disabled = false,
+}: SwitchProps) => {
   return (
-    <HeadlessSwitch
-      checked={checked}
-      onChange={onCheckedChange}
+    <button
+      type="button"
+      role="switch"
+      aria-label="Toggle setting"
+      aria-checked={checked}
+      onClick={() => onCheckedChange(!checked)}
       disabled={disabled}
       className={cn(
         "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
         checked ? "bg-blue-500" : "bg-gray-300",
-        disabled && "opacity-50 cursor-not-allowed"
+        disabled && "opacity-50 cursor-not-allowed",
       )}
     >
       <span
         className={cn(
           "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
-          checked ? "translate-x-6" : "translate-x-1"
+          checked ? "translate-x-6" : "translate-x-1",
         )}
       />
-    </HeadlessSwitch>
+    </button>
   );
 };

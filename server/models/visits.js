@@ -1,27 +1,26 @@
-import mongoose from 'mongoose';
-
-// visitSchema
-
-const visitSchema = new mongoose.Schema({
+import mongoose from "mongoose";
+const visitSchema = new mongoose.Schema(
+  {
     petId: {
-        type: mongoose.Schema.Types.ObjectId,
-        required: true,
-        ref: 'Pet'
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+      ref: "Pet",
+      index: true,
     },
-    date: {
-        type: Date,
-        required: true
-    },
-    comment: {
-        type: String,
-        default: ''
-    },
+    date: { type: Date, required: true, index: true },
+    comment: { type: String, default: "", maxlength: 2000 },
     ownerId: {
-        type: mongoose.Schema.Types.ObjectId,
-        required: true,
-        ref: 'User'
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+      ref: "User",
+      index: true,
     },
-});
-
-const Visit = mongoose.model('Visit', visitSchema);
-export default Visit;
+    status: {
+      type: String,
+      enum: ["scheduled", "completed", "cancelled"],
+      default: "scheduled",
+    },
+  },
+  { timestamps: true, optimisticConcurrency: true },
+);
+export default mongoose.model("Visit", visitSchema);

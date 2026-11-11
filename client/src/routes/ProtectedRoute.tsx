@@ -1,21 +1,36 @@
-import { Navigate, Outlet } from 'react-router-dom';
-import { Navigation } from './dashboard/components/navigation';
-
-// ProtectedRoute
-
+import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { Navigation } from "./dashboard/components/navigation";
+import { useAuth } from "../hooks/use-auth";
+import { ErrorNotice, Loading } from "../components/shared/Page";
+import { ModalProvider } from "../components/providers/modal-provider";
 const ProtectedRoute = () => {
-  const isAuthenticated = Boolean(localStorage.getItem('token'));
-
-  return isAuthenticated ? (
-    <div className="h-screen flex text-black">
+  const auth = useAuth();
+  const location = useLocation();
+  if (auth.loading) return <Loading />;
+  if (!auth.isAuthenticated)
+    return (
+      <Navigate to="/auth/login" state={{ from: location.pathname }} replace />
+    );
+  if (auth.error)
+    return (
+      <div className="page">
+        <ErrorNotice message={auth.error} retry={auth.retry} />
+        <button className="btn btn-secondary" onClick={auth.logout}>
+          Sign out
+        </button>
+      </div>
+    );
+  return (
+    <div className="workspace">
+      <a className="skip-link" href="#main">
+        Skip to content
+      </a>
       <Navigation />
-      <main className="flex-1 h-full overflow-y-auto">
+      <main id="main" className="workspace-main">
         <Outlet />
       </main>
+      <ModalProvider />
     </div>
-    ): (
-    <Navigate to="/auth/login" replace />
   );
 };
-
 export default ProtectedRoute;

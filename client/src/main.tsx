@@ -1,69 +1,65 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import {
-  createBrowserRouter,
-  RouterProvider,
-} from "react-router-dom"
-
-import './index.css'
-import Auth from './routes/root/Auth.tsx'
-import Root from './routes/root/root.tsx'
-import Main from './routes/home-page/Main.tsx'
-import Visits from './routes/dashboard/visits/Visits.tsx'
-import Dashboard from './routes/dashboard/Dashboard.tsx'
-import Login from './routes/auth/login/Login.tsx'
-import SignUp from './routes/auth/signup/SignUp.tsx'
-import ProtectedRoute from './routes/ProtectedRoute.tsx'
-import CreatePet from './routes/dashboard/pets/CreatePet.tsx'
-import Pets from './routes/dashboard/pets/Pets.tsx'
-import PetDetails from './routes/dashboard/pets/PetDetails.tsx'
-
-import { ModalProvider } from './components/providers/modal-provider.tsx'
-import { AuthProvider } from './context/AuthContext.tsx'
-import Owners from './routes/dashboard/owners/Owners.tsx'
-import OwnerDetails from './routes/dashboard/owners/OwnerDetails.tsx'
-
-// Router Configuration
-
+import React, { Suspense, lazy } from "react";
+import ReactDOM from "react-dom/client";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import "./index.css";
+import "./workspace.css";
+import Root from "./routes/root/root";
+import Auth from "./routes/root/Auth";
+import ProtectedRoute from "./routes/ProtectedRoute";
+import { AuthProvider } from "./context/AuthContext";
+import RouteError from "./components/RouteError";
+import { Loading } from "./components/shared/Page";
+const Main = lazy(() => import("./routes/home-page/Main"));
+const Login = lazy(() => import("./routes/auth/login/Login"));
+const SignUp = lazy(() => import("./routes/auth/signup/SignUp"));
+const Dashboard = lazy(() => import("./routes/dashboard/Dashboard"));
+const Pets = lazy(() => import("./routes/dashboard/pets/Pets"));
+const CreatePet = lazy(() => import("./routes/dashboard/pets/CreatePet"));
+const PetDetails = lazy(() => import("./routes/dashboard/pets/PetDetails"));
+const Owners = lazy(() => import("./routes/dashboard/owners/Owners"));
+const OwnerDetails = lazy(
+  () => import("./routes/dashboard/owners/OwnerDetails"),
+);
+const Visits = lazy(() => import("./routes/dashboard/visits/Visits"));
+const Scan = lazy(() => import("./routes/dashboard/scan/Scan"));
 const router = createBrowserRouter([
   {
     path: "/",
     element: <Root />,
-    children: [
-      {
-        path: "/",
-        element: <Main />,
-      },
-    ]
+    errorElement: <RouteError />,
+    children: [{ index: true, element: <Main /> }],
   },
   {
     path: "/dashboard",
     element: <ProtectedRoute />,
+    errorElement: <RouteError />,
     children: [
-      { path: "", element: <Dashboard /> },
+      { index: true, element: <Dashboard /> },
       { path: "pets", element: <Pets /> },
-      { path: "pets/:petId", element: <PetDetails /> },
       { path: "pets/create-pet", element: <CreatePet /> },
-      { path: "visits", element: <Visits /> },
+      { path: "pets/:petId", element: <PetDetails /> },
       { path: "owners", element: <Owners /> },
       { path: "owners/:ownerId", element: <OwnerDetails /> },
+      { path: "visits", element: <Visits /> },
+      { path: "scan", element: <Scan /> },
     ],
   },
   {
     path: "/auth",
     element: <Auth />,
+    errorElement: <RouteError />,
     children: [
       { path: "login", element: <Login /> },
       { path: "signup", element: <SignUp /> },
     ],
   },
 ]);
-
-ReactDOM.createRoot(document.getElementById('root')!).render(
+ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <AuthProvider>
-      <ModalProvider />
-      <RouterProvider router={router} />
+      <Suspense fallback={<Loading />}>
+        <RouterProvider router={router} />
+      </Suspense>
     </AuthProvider>
   </React.StrictMode>,
-)
+);

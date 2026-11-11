@@ -1,73 +1,44 @@
-import mongoose from 'mongoose';
-import commentSchema from './comments.js';
+import mongoose from "mongoose";
+import commentSchema from "./comments.js";
 
-// Vaccination History
 const vaccinationSchema = new mongoose.Schema({
-    date: Date,
-    vaccinationType: String,
-})
-
-// petSchema
-
-const petSchema = new mongoose.Schema({
-    ownerId: {
-        type: mongoose.Schema.Types.ObjectId,
-        required: true,
-        ref: 'User'
-    },
-    name: {
-        type: String,
-        required: true
-    },
-    petType: {
-        type: String,
-        required: true,
-        enum: ['dog', 'cat']
-    },
-    breed1: {
-        type: String,
-        required: true, // Make it required to ensure breed1 is always provided
-    },
-    breed2: {
-        type: String,
-        required: true, // Make it required to ensure breed2 is always provided
-    },
-    status: {
-        type: String,
-        required: true,
-        enum: ['active', 'inactive'],
-        default: 'active'
-    },
-    dob: {
-        type: Date,
-        required: true
-    },
-    rfidNumber: {
-        type: String,
-        required: true,
-        unique: true,
-    },
-    vaccinationHistory: [{ type: vaccinationSchema, default: undefined }],
-    contact: {
-        type: String,
-        required: true,
-        validate: {
-            validator: function (v) {
-                return /^[0-9]{11}$/.test(v); // Ensures contact number is exactly 11 digits
-            },
-            message: props => `${props.value} is not a valid contact number!`
-        }
-    },
-    address: {
-        type: String,
-        required: true
-    },
-    email: {
-        type: String,
-        required: false,
-        match: [/^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, 'Please enter a valid email address!'] // Strict email validation
-    },
+  date: { type: Date, required: true },
+  vaccinationType: { type: String, required: true, trim: true, maxlength: 120 },
 });
-
-const Pet = mongoose.model('Pet', petSchema);
-export default Pet;
+const petSchema = new mongoose.Schema(
+  {
+    ownerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+      ref: "User",
+      index: true,
+    },
+    name: { type: String, required: true, trim: true, maxlength: 120 },
+    petType: { type: String, required: true, enum: ["dog", "cat"] },
+    breed1: { type: String, required: true, trim: true },
+    breed2: { type: String, default: "", trim: true },
+    status: {
+      type: String,
+      enum: ["active", "inactive"],
+      default: "active",
+      lowercase: true,
+    },
+    dob: { type: Date, required: true },
+    rfidNumber: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      uppercase: true,
+    },
+    vaccinationHistory: { type: [vaccinationSchema], default: [] },
+    publicComments: { type: [commentSchema], default: [] },
+    doctorComments: { type: [commentSchema], default: [] },
+    contact: { type: String, required: true, trim: true },
+    address: { type: String, required: true, trim: true },
+    email: { type: String, lowercase: true, trim: true },
+    deletedAt: { type: Date, default: null, index: true },
+  },
+  { timestamps: true, optimisticConcurrency: true },
+);
+export default mongoose.model("Pet", petSchema);

@@ -1,7 +1,6 @@
 import { create } from "zustand";
 
 type SettingsStore = {
-
   // Boolean to track if the settings are open or closed.
 
   isOpen: boolean;

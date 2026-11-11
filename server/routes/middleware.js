@@ -1,34 +1,38 @@
-import jwt from 'jsonwebtoken';
+import jwt from "jsonwebtoken";
+import User from "../models/users.js";
+import { asyncRoute, fail } from "../lib/http.js";
 
-// Secret key used for JWT token verification.
-
-const SECRET_KEY = 's3cr3t';
-
-// Authentication middleware to validate JWT tokens in requests.
-
-const auth = async (req, res, next) => {
-    try {
-
-        // Extracting the token from the Authorization header.
-        // The token is expected to follow the 'Bearer [token]' format.
-
-        const token = req.headers.authorization.split(' ')[1];
-
-        // Verifying the token using the secret key.
-        // Decoded data will contain the payload of the JWT token.
-
-        const decodedData = jwt.verify(token, SECRET_KEY);
-
-        // Attaching the userId and userRole from the token to the request object.
-        // This makes these values available in the request handling pipeline.
-
-        req.userId = decodedData?.id;
-        req.userRole = decodedData?.role;
-
-        next();
-    } catch (error) {
-        res.status(401).json({ message: "Unauthorized" });
-    }
+export default asyncRoute(async (req, _res, next) => {
+  const match = req.headers.authorization?.match(/^Bearer (\S+)$/i);
+  if (!match) fail(401, "Please sign in to continue.");
+  let decoded;
+  try {
+    decoded = jwt.verify(match[1], req.app.locals.jwtSecret, {
+      algorithms: ["HS256"],
+    });
+  } catch {
+    fail(401, "Your session expired. Please sign in again.");
+  }
+  if (
+    !decoded ||
+    typeof decoded !== "object" ||
+    !/^[a-f\d]{24}$/i.test(decoded.id || "")
+  )
+    fail(401, "Invalid session.");
+  const user = await User.findById(decoded.id);
+  if (!user) fail(401, "Account not found. Please sign in again.");
+  req.user = user;
+  req.userId = user.id;
+  req.userRole = user.role;
+  next();
+});
+export const doctorOnly = (req, _res, next) => {
+  if (req.userRole !== "doctor")
+    return next(
+      Object.assign(
+        new Error("This action is available to veterinary staff only."),
+        { status: 403 },
+      ),
+    );
+  next();
 };
-
-export default auth;

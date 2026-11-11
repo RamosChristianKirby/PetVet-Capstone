@@ -1,182 +1,230 @@
-import axios from "axios"
-import React, { useEffect, useState } from "react"
-import { useEditDetails } from "../../hooks/use-pet-details"
-import { Label } from "../../components/ui/label"
-import { Dialog, DialogContent, DialogHeader } from "../../components/ui/dialog"
+import { FormEvent, useEffect, useState } from "react";
+import { useEditDetails } from "../../hooks/use-pet-details";
+import { useAuth } from "../../hooks/use-auth";
+import { api, errorMessage, refreshData } from "../../lib/api";
+import { formatDate, today } from "../../lib/dates";
+import type { Vaccination } from "../../lib/types";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
+import { ErrorNotice } from "../shared/Page";
 
-// EditPetDetails
-
-export const EditPetDetails = () => {
-  const editDetails = useEditDetails()
-
-  const [name, setName] = useState("")
-  const [status, setStatus] = useState("")
-  const [vaccinationHistory, setVaccinationHistory] = useState<any>([])
-  const [vaccinationType, setVaccinationType] = useState("")
-  const [vaccinationDate, setVaccinationDate] = useState<any>("")
-  const [loading, setLoading] = useState(false)
-
+export function EditPetDetails() {
+  const { isOpen, pet, onClose } = useEditDetails();
+  const { user } = useAuth();
+  const [vaccines, setVaccines] = useState<Vaccination[]>([]);
+  const [type, setType] = useState("");
+  const [date, setDate] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
   useEffect(() => {
-    if (editDetails?.pet?.name) setName(editDetails?.pet?.name)
-    if (editDetails?.pet?.vaccinationHistory) {
-      setVaccinationHistory(editDetails?.pet?.vaccinationHistory as [])
+    if (isOpen) {
+      setVaccines(pet?.vaccinationHistory || []);
+      setType("");
+      setDate("");
+      setError("");
     }
-    if (editDetails?.pet?.vaccinationHistory) {
-      setStatus(editDetails?.pet?.status)
+  }, [isOpen, pet]);
+  function addVaccine() {
+    if (!type.trim() || !date || date > today()) {
+      setError("Enter a vaccine name and a date on or before today.");
+      return;
     }
-  }, [editDetails])
-
-  if (!editDetails.isOpen || !editDetails.pet) {
-    return null
+    setVaccines((previous) => [
+      ...previous,
+      { date, vaccinationType: type.trim() },
+    ]);
+    setType("");
+    setDate("");
+    setError("");
   }
-
-  const handleConfirm = async () => {
-    if (!editDetails.pet) {
-      console.error("Pet details not found")
-      return
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!pet || busy) return;
+    if (type || date) {
+      setError(
+        "Add the pending vaccination to the history, or clear its fields before saving.",
+      );
+      return;
     }
+    setBusy(true);
+    setError("");
+    const values = Object.fromEntries(new FormData(event.currentTarget));
     try {
-      setLoading(true)
-      const token = localStorage.getItem("token")
-
-      const response = await axios.put(
-        `http://localhost:5000/api/pets/details/${editDetails.pet._id}`,
-        {
-          status,
-          vaccinationHistory,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      )
-
-      if (response) {
-        editDetails.onClose()
-        window.location.reload()
-      }
+      await api.put("/pets/details/" + pet._id, {
+        ...values,
+        version: pet.__v,
+        ...(user?.role === "doctor" ? { vaccinationHistory: vaccines } : {}),
+      });
+      refreshData();
+      onClose();
     } catch (error) {
-      console.error("Error updating pet:", error)
+      setError(errorMessage(error));
     } finally {
-      setLoading(false)
+      setBusy(false);
     }
   }
-
-  const addVaccination = () => {
-    if (!vaccinationType || !vaccinationDate) return
-    setVaccinationHistory((prev: any) => [
-      ...prev,
-      {
-        vaccinationType,
-        date: new Date(vaccinationDate).toISOString(),
-      },
-    ])
-    setVaccinationType("")
-    setVaccinationDate("")
-  }
-
-  const removeVaccination = (index: number) => {
-    setVaccinationHistory((prev: any) =>
-      prev.filter((_: any, i: number) => i !== index)
-    )
-  }
-
   return (
-    <Dialog open={editDetails.isOpen} onOpenChange={editDetails.onClose}>
-      <DialogContent>
-        <DialogHeader className="border-b pb-3">
-          <h2 className="text-lg font-medium">Edit Pet Details</h2>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open && !busy) onClose();
+      }}
+    >
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Edit {pet?.name}’s details</DialogTitle>
+          <DialogDescription>
+            Keep identification and recovery information up to date.
+          </DialogDescription>
         </DialogHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col gap-y-2 w-full">
-            <Label>Pet Details</Label>
-            <span className="mt-4 block">
-              <div className="flex items-center gap-x-4 mb-2">
-                <h2 className="font-semibold">Name</h2>
-                <span className="block">{name}</span>
-              </div>
-            </span>
-            <div className="flex flex-col gap-y-2 w-full">
-              <Label>Status</Label>
-              <select
-                className="border rounded px-1 py-0.5"
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-              >
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-              </select>
+        {pet && (
+          <form
+            key={pet._id + String(isOpen)}
+            className="modal-form"
+            onSubmit={submit}
+          >
+            <div className="field-grid">
+              <label className="field">
+                Name
+                <input
+                  name="name"
+                  defaultValue={pet.name}
+                  required
+                  maxLength={120}
+                />
+              </label>
+              <label className="field">
+                Status
+                <select name="status" defaultValue={pet.status.toLowerCase()}>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </label>
+              <label className="field">
+                Species
+                <select name="petType" defaultValue={pet.petType}>
+                  <option value="dog">Dog</option>
+                  <option value="cat">Cat</option>
+                </select>
+              </label>
+              <label className="field">
+                Date of birth
+                <input
+                  type="date"
+                  name="dob"
+                  defaultValue={pet.dob.slice(0, 10)}
+                  max={today()}
+                  required
+                />
+              </label>
+              <label className="field">
+                Primary breed
+                <input
+                  name="breed1"
+                  defaultValue={pet.breed1}
+                  required
+                  maxLength={120}
+                />
+              </label>
+              <label className="field">
+                Secondary breed
+                <input
+                  name="breed2"
+                  defaultValue={pet.breed2}
+                  maxLength={120}
+                />
+              </label>
+              <label className="field">
+                RFID number
+                <input
+                  name="rfidNumber"
+                  defaultValue={pet.rfidNumber}
+                  required
+                  pattern="[A-Za-z0-9-]{5,64}"
+                />
+              </label>
+              <label className="field">
+                Contact number
+                <input
+                  name="contact"
+                  type="tel"
+                  defaultValue={pet.contact}
+                  required
+                />
+              </label>
             </div>
-            <span className="block">
-              <div className="flex items-center gap-x-4 mb-2">
-                <h2 className="font-semibold">Vaccination History</h2>
-              </div>
-            </span>
-            <div>
-              <button
-                className="w-full hover:bg-primary/80 bg-primary text-white text-sm font-medium p-2 rounded"
-                onClick={addVaccination}
-              >
-                Add Vaccination
-              </button>
-            </div>
-            <div className="overflow-y-auto flex flex-col h-96 w-full space-y-2 px-0.5">
-              <div className="border rounded-lg p-2 shadow flex justify-between w-full">
-                <div className="flex flex-col gap-2 w-full">
-                  <Label>Type</Label>
-                  <input
-                    className="border rounded px-1 py-0.5"
-                    value={vaccinationType}
-                    onChange={(e) => setVaccinationType(e.currentTarget.value)}
-                    placeholder="Vaccination Type"
-                  />
-                  <Label>Date Vaccinated</Label>
-                  <input
-                    type="date"
-                    value={vaccinationDate ? vaccinationDate.split("T")[0] : ""}
-                    onChange={(e) => {
-                      setVaccinationDate(e.target.value)
-                    }}
-                    className="border rounded px-1 py-0.5"
-                  />
-                </div>
-              </div>
-              {vaccinationHistory.reverse().map((vaccine, index) => (
-                <div
-                  className="border rounded-lg p-2 shadow flex justify-between"
-                  key={index}
-                >
-                  <div>
-                    <Label>Type</Label>
-                    <p>{vaccine.vaccinationType}</p>
-                    <Label>Date Vaccinated</Label>
-                    <p>
-                      {new Date(vaccine.date).toLocaleString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </p>
-                  </div>
-                  <div className="h-full  flex items-center justify-center">
+            <label className="field">
+              Recovery address
+              <textarea
+                name="address"
+                defaultValue={pet.address}
+                required
+                maxLength={500}
+              />
+            </label>
+            {user?.role === "doctor" && (
+              <fieldset className="vaccination-editor">
+                <legend>Vaccination history</legend>
+                {vaccines.map((vaccine, index) => (
+                  <div className="vaccine-row" key={vaccine._id || index}>
+                    <div>
+                      <strong>{vaccine.vaccinationType}</strong>
+                      <small>{formatDate(vaccine.date)}</small>
+                    </div>
                     <button
-                      className="text-red-700 font-medium p-2 h-fit hover:bg-red-50 rounded"
-                      onClick={() => removeVaccination(index)}
+                      type="button"
+                      className="text-link danger"
+                      onClick={() =>
+                        setVaccines((previous) =>
+                          previous.filter((_, i) => i !== index),
+                        )
+                      }
                     >
                       Remove
                     </button>
                   </div>
+                ))}
+                <div className="field-grid">
+                  <label className="field">
+                    Vaccine name
+                    <input
+                      value={type}
+                      maxLength={120}
+                      onChange={(event) => setType(event.target.value)}
+                      placeholder="e.g. Rabies"
+                    />
+                  </label>
+                  <label className="field">
+                    Date given
+                    <input
+                      type="date"
+                      value={date}
+                      max={today()}
+                      onChange={(event) => setDate(event.target.value)}
+                    />
+                  </label>
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-        <button
-          onClick={handleConfirm}
-          className="rounded-md px-3.5 py-2.5 text-sm font-semibold bg-neutral-950 text-white hover:shadow-sm hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-950"
-        >
-          Confirm
-        </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={addVaccine}
+                >
+                  Add vaccination to history
+                </button>
+              </fieldset>
+            )}
+            {error && <ErrorNotice message={error} />}
+            <button className="btn btn-primary" disabled={busy}>
+              {busy ? "Saving…" : "Save changes"}
+            </button>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
-  )
+  );
 }

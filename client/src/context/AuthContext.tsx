@@ -1,33 +1,95 @@
-import { createContext, useState, useEffect, ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
+import { api, errorMessage } from "../lib/api";
+import {
+  clearSession,
+  readUser,
+  saveProfile,
+  tokenExpiry,
+} from "../lib/session";
+import type { User } from "../lib/types";
 
 interface AuthContextType {
+  user: User | null;
   isAuthenticated: boolean;
+  loading: boolean;
+  error: string;
+  retry: () => void;
+  logout: () => void;
   setIsAuthenticated: (value: boolean) => void;
 }
-
-// Creating the AuthContext with initial value set to null.
-
+// The provider and its context share a module; consumers use the useAuth hook.
+// eslint-disable-next-line react-refresh/only-export-components
 export const AuthContext = createContext<AuthContextType | null>(null);
-
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-// AuthProvider component to provide authentication state to its children.
-
-export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState(readUser);
+  const [token, setToken] = useState(() => localStorage.getItem("token"));
+  const [loading, setLoading] = useState(Boolean(token));
+  const [error, setError] = useState("");
+  const [revision, setRevision] = useState(0);
+  const retry = useCallback(() => setRevision((value) => value + 1), []);
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    setIsAuthenticated(!!token);
+    const sync = () => {
+      setUser(readUser());
+      setToken(localStorage.getItem("token"));
+    };
+    window.addEventListener("petvet:session", sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener("petvet:session", sync);
+      window.removeEventListener("storage", sync);
+    };
   }, []);
-
-  // Render the AuthContext.Provider with the current state and updater function.
-  // This makes isAuthenticated and setIsAuthenticated available to all child components.
-
+  useEffect(() => {
+    if (!token || tokenExpiry(token) <= Date.now()) {
+      if (token) clearSession();
+      setLoading(false);
+      return;
+    }
+    const controller = new AbortController();
+    setLoading(true);
+    setError("");
+    api
+      .get<User>("/users/me", { signal: controller.signal })
+      .then(({ data }) => {
+        if (!controller.signal.aborted) {
+          saveProfile(data);
+          setUser(data);
+        }
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) setError(errorMessage(error));
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    const timer = window.setTimeout(
+      clearSession,
+      Math.min(tokenExpiry(token) - Date.now(), 2147483647),
+    );
+    return () => {
+      controller.abort();
+      window.clearTimeout(timer);
+    };
+  }, [token, revision]);
   return (
-    <AuthContext.Provider value={{ isAuthenticated, setIsAuthenticated }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated: Boolean(user),
+        loading,
+        error,
+        retry,
+        logout: clearSession,
+        setIsAuthenticated: (value) =>
+          value ? setUser(readUser()) : clearSession(),
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

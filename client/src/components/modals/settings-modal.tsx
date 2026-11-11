@@ -1,182 +1,112 @@
-import emailjs from "emailjs-com";
-import { useState } from "react";
+import { FormEvent, useState } from "react";
 import { useSettings } from "../../hooks/use-settings";
-import { Label } from "../../components/ui/label";
+import { useAuth } from "../../hooks/use-auth";
+import { api, errorMessage } from "../../lib/api";
+import { saveProfile } from "../../lib/session";
+import type { User } from "../../lib/types";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
-} from "../../components/ui/dialog";
-import { Switch } from "../../components/ui/switch";
-
-// SettingsModal
-export const SettingsModal = () => {
+  DialogTitle,
+} from "../ui/dialog";
+import { ErrorNotice } from "../shared/Page";
+export function SettingsModal() {
   const settings = useSettings();
-  const [emailNotifications, setEmailNotifications] = useState(false);
-  const [isContactDialogOpen, setIsContactDialogOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    message: "",
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { id, value } = e.target;
-    setFormData((prev) => ({ ...prev, [id]: value }));
-  };
-
-  const handleEmailToggle = () => {
-    setEmailNotifications((prev) => !prev);
-  };
-
-  const handleContactDialogOpen = () => {
-    setIsContactDialogOpen(true);
-  };
-
-  const handleContactDialogClose = () => {
-    setIsContactDialogOpen(false);
-    setErrorMessage(""); // Reset error when closing dialog
-  };
-
-  const handleFormSubmit = async () => {
-    setIsSubmitting(true);
-    setErrorMessage(""); // Reset error message before submitting
-
-    // Client-side validation
-    if (!formData.name || !formData.email || !formData.message) {
-      setErrorMessage("All fields are required.");
-      setIsSubmitting(false);
-      return;
-    }
-
+  const { user } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    setSuccess(false);
+    const values = Object.fromEntries(new FormData(event.currentTarget));
     try {
-      // Send the email via EmailJS
-      await emailjs.send(
-        "service_wrg1bid", // Replace with your EmailJS service ID
-        "template_bsfhl4n", // Replace with your EmailJS template ID
-        formData,
-        "BeO0Y8BzczIjzvHdB" // Replace with your EmailJS user ID
-      );
-
-      // Show success popup after successful submission
-      setShowSuccessPopup(true);
-      setIsContactDialogOpen(false);
-    } catch (error: any) {
-      setErrorMessage("Failed to send message. Please try again later.");
+      const { data } = await api.put<User>("/users/" + user?.id, values);
+      saveProfile(data);
+      setSuccess(true);
+    } catch (error) {
+      setError(errorMessage(error));
     } finally {
-      setIsSubmitting(false);
+      setBusy(false);
     }
-  };
-
-  const handleSuccessPopupClose = () => {
-    setShowSuccessPopup(false); // Close the success popup
-  };
-
+  }
   return (
-    <Dialog open={settings.isOpen} onOpenChange={settings.onClose}>
+    <Dialog
+      open={settings.isOpen}
+      onOpenChange={(open) => {
+        if (!open && !busy) {
+          settings.onClose();
+          setError("");
+          setSuccess(false);
+        }
+      }}
+    >
       <DialogContent>
-        <DialogHeader className="border-b pb-3">
-          <h2 className="text-lg font-medium">My settings</h2>
+        <DialogHeader>
+          <DialogTitle>My profile</DialogTitle>
+          <DialogDescription>
+            Manage the contact information for your account.
+          </DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col gap-4 mt-4">
-          {/* Email Notifications Toggle */}
-          <div className="flex items-center justify-between">
-            <div className="flex flex-col gap-y-1">
-              <Label>Email Notifications</Label>
-              <span className="text-[0.8rem] text-muted-foreground">
-                Receive updates and notifications via email
-              </span>
-            </div>
-            <Switch checked={emailNotifications} onCheckedChange={handleEmailToggle} />
-          </div>
-
-          {/* Contact Us */}
-          <div className="flex flex-col gap-y-1">
-            <Label>Contact Us</Label>
-            <button
-              onClick={handleContactDialogOpen}
-              className="text-blue-500 underline hover:text-blue-700"
-            >
-              Click here to contact us
-            </button>
-          </div>
-        </div>
-      </DialogContent>
-
-      {/* Contact Us Dialog */}
-      <Dialog open={isContactDialogOpen} onOpenChange={handleContactDialogClose}>
-        <DialogContent>
-          <DialogHeader className="border-b pb-3">
-            <h2 className="text-lg font-medium">Contact Us</h2>
-          </DialogHeader>
-          <div className="flex flex-col gap-4 mt-4">
-            <div className="flex flex-col gap-y-1">
-              <Label htmlFor="name">Name</Label>
+        {user && (
+          <form className="modal-form" onSubmit={submit}>
+            <label className="field">
+              Full name
               <input
-                id="name"
-                type="text"
-                placeholder="Your name"
-                className="border rounded p-2"
-                value={formData.name}
-                onChange={handleInputChange}
+                name="name"
+                defaultValue={user.name}
+                required
+                maxLength={120}
               />
-            </div>
-            <div className="flex flex-col gap-y-1">
-              <Label htmlFor="email">Email</Label>
+            </label>
+            <label className="field">
+              Email
               <input
-                id="email"
+                name="email"
                 type="email"
-                placeholder="Your email"
-                className="border rounded p-2"
-                value={formData.email}
-                onChange={handleInputChange}
+                defaultValue={user.email}
+                required
+                maxLength={254}
               />
-            </div>
-            <div className="flex flex-col gap-y-1">
-              <Label htmlFor="message">Message</Label>
+            </label>
+            <label className="field">
+              Contact number
+              <input
+                name="contact"
+                type="tel"
+                defaultValue={user.contact}
+                required
+              />
+            </label>
+            <label className="field">
+              Address
               <textarea
-                id="message"
-                placeholder="Your message"
-                className="border rounded p-2 h-24"
-                value={formData.message}
-                onChange={handleInputChange}
+                name="address"
+                defaultValue={user.address}
+                required
+                maxLength={500}
               />
-            </div>
-            {/* Display error message if any */}
-            {errorMessage && (
-              <div className="text-red-500 text-sm">{errorMessage}</div>
+            </label>
+            <p className="muted text-sm">
+              Pet recovery details are saved separately. Update them in each
+              pet’s profile when needed.
+            </p>
+            {error && <ErrorNotice message={error} />}
+            {success && (
+              <p className="notice success" role="status">
+                Your profile has been updated.
+              </p>
             )}
-            <button
-              onClick={handleFormSubmit}
-              disabled={isSubmitting}
-              className="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 disabled:opacity-50"
-            >
-              {isSubmitting ? "Submitting..." : "Submit"}
+            <button className="btn btn-primary" disabled={busy}>
+              {busy ? "Saving…" : "Save profile"}
             </button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Success Popup */}
-      <Dialog open={showSuccessPopup} onOpenChange={handleSuccessPopupClose}>
-        <DialogContent>
-          <DialogHeader className="border-b pb-3">
-            <h2 className="text-lg font-medium">Success</h2>
-          </DialogHeader>
-          <div className="flex flex-col gap-4 mt-4">
-            <div className="text-green-500">Your message has been successfully sent!</div>
-            <button
-              onClick={handleSuccessPopupClose}
-              className="bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600"
-            >
-              Close
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </form>
+        )}
+      </DialogContent>
     </Dialog>
   );
-};
+}

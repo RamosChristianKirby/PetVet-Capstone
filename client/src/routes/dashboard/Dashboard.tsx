@@ -1,127 +1,214 @@
-import { getUserDetails } from "../../context/UserUtils";
-import { useEffect, useState } from "react";
-import MarQuee from "react-fast-marquee";
-import animalsOne from '../../assets/img/animals1.jpg';
-import bunnyOne from '../../assets/img/bunny1.jpg';
-import catOne from '../../assets/img/cat1.jpg';
-import catTwo from '../../assets/img/cat2.jpg';
-import catThree from '../../assets/img/cat3.jpg';
-import catFour from '../../assets/img/cat4.jpg';
-import dogOne from '../../assets/img/dog1.jpg';
-import dogTwo from '../../assets/img/dog2.jpg';
-import dogThree from '../../assets/img/dog3.jpg';
-import dogFour from '../../assets/img/dog4.jpg';
-import dogFive from '../../assets/img/dog5.jpg';
-import hedgeOne from '../../assets/img/hedge1.jpg';
-import parrotsOne from '../../assets/img/parrots1.jpg';
-import guineaPigOne from '../../assets/img/guinePig1.jpg';
+import { Link } from "react-router-dom";
+import {
+  ArrowUpRight,
+  CalendarDays,
+  PawPrint,
+  ScanLine,
+  ShieldCheck,
+  Plus,
+  ArrowRight,
+} from "lucide-react";
+import { useResource } from "../../hooks/use-resource";
+import { useAuth } from "../../hooks/use-auth";
+import {
+  Badge,
+  Empty,
+  ErrorNotice,
+  Loading,
+  Page,
+} from "../../components/shared/Page";
+import { formatDate } from "../../lib/dates";
+import type { Pet, Visit } from "../../lib/types";
+import dog from "../../assets/img/dog1.jpg";
 
-// Testikuvia
-
-const rowOneImages = [
-  {
-    url: animalsOne,
-  },
-  {
-    url: dogOne,
-  },
-  {
-    url: bunnyOne,
-  },
-  {
-    url: dogFour,
-  },
-  {
-    url: catOne,
-  },
-  {
-    url: guineaPigOne,
-  },
-  {
-    url: catThree,
-  },
-];
-
-const rowTwoImages = [
-  {
-    url: catTwo,
-  },
-  {
-    url: dogTwo,
-  },
-  {
-    url: parrotsOne,
-  },
-  {
-    url: dogThree,
-  },
-  {
-    url: hedgeOne,
-  },
-  {
-    url: dogFive,
-  },
-  {
-    url: catFour,
-  },
-];
-
-// Dashboard
-
-const Dashboard = () => {
-  const [mounted, setmounted] = useState(false);
-  const { name } = getUserDetails();
-
-  useEffect(() => {
-    if (!mounted) {
-      setmounted(true);
-    }
-  }, [mounted]);
-
-  if (!mounted) {
-    return null;
-  }
-
+export default function Dashboard() {
+  const { user } = useAuth();
+  const firstName =
+    user?.name.replace(/^Dr\.?\s+/i, "").split(" ")[0] || "there";
+  const pets = useResource<Pet[]>("/pets");
+  const visits = useResource<Visit[]>("/visits");
+  const upcoming = (visits.data || [])
+    .filter(
+      (visit) =>
+        visit.status === "scheduled" && new Date(visit.date) >= new Date(),
+    )
+    .slice(0, 4);
   return (
-    <div className="w-full flex items-center justify-center">
-      <div>
-        <div className="flex items-center justify-center w-full h-screen">
-          <div className="flex flex-col items-center justify-center">
-            <h1 className="text-4xl py-5 xl:text-7xl 2xl:text-8xl text-center xl:leading-[80px] 2xl:leading-[100px] tracking-tighter">
-              Welcome to PetVet,<br /> <span className="font-semibold underline">{name}!</span>
-            </h1>
-            <div className="wrapper bg-gradient-to-br from-sky-100 via-gray-200 to-pink-100 border border-neutral-300 shadow-2xl shadow-gray-300 rounded-md">
-              <MarQuee pauseOnHover={true}>
-                {rowOneImages.map((i, index) => (
-                  <img
-                    src={i.url}
-                    key={index}
-                    alt=""
-                    className="md:m-4 w-[150px] m-2 md:w-[300px] rounded-[20px] shadow-md shadow-neutral-800"
-                    width={250}
-                    height={150}
-                  />
-                ))}
-              </MarQuee>
-              <MarQuee direction='right' pauseOnHover={true}>
-                {rowTwoImages.map((i, index) => (
-                  <img
-                    src={i.url}
-                    key={index}
-                    alt=""
-                    className="md:m-4 w-[150px] m-2 md:w-[300px] rounded-[20px] shadow-md shadow-neutral-800"
-                    width={250}
-                    height={150}
-                  />
-                ))}
-              </MarQuee>
-            </div>
-          </div>
+    <Page
+      title={"Hello, " + firstName + "."}
+      description="A little overview of the lives in your care."
+      actions={
+        <Link className="btn btn-primary" to="/dashboard/pets/create-pet">
+          <Plus size={18} />
+          Register a pet
+        </Link>
+      }
+    >
+      <section className="welcome-card">
+        <div>
+          <span className="eyebrow">EVERY PAW HAS A STORY</span>
+          <h2>
+            Good care starts
+            <br />
+            with connection.
+          </h2>
+          <p>
+            Keep their details close, their care on track,
+            <br className="desktop-only" /> and their next chapter a little
+            brighter.
+          </p>
+          <Link to="/dashboard/scan" className="btn btn-dark">
+            <ScanLine size={18} />
+            Find a pet by RFID
+            <ArrowUpRight size={17} />
+          </Link>
         </div>
-
-      </div>
-    </div>
+        <div className="welcome-photo">
+          <img src={dog} alt="A dog enjoying a quiet moment outdoors" />
+          <span>
+            <PawPrint size={15} />
+            Small tag. Big peace of mind.
+          </span>
+        </div>
+      </section>
+      {pets.loading || visits.loading ? (
+        <Loading />
+      ) : pets.error || visits.error ? (
+        <ErrorNotice
+          message={pets.error || visits.error}
+          retry={() => {
+            pets.retry();
+            visits.retry();
+          }}
+        />
+      ) : (
+        <>
+          <section className="stats-grid" aria-label="Registry overview">
+            {[
+              {
+                label: "Registered pets",
+                value: pets.data?.length || 0,
+                detail:
+                  user?.role === "doctor"
+                    ? "Across the registry"
+                    : "In your family",
+                icon: PawPrint,
+              },
+              {
+                label: "Active pets",
+                value:
+                  pets.data?.filter((pet) => pet.status === "active").length ||
+                  0,
+                detail: "Ready for their next visit",
+                icon: ShieldCheck,
+              },
+              {
+                label: "Upcoming visits",
+                value:
+                  visits.data?.filter(
+                    (visit) =>
+                      visit.status === "scheduled" &&
+                      new Date(visit.date) >= new Date(),
+                  ).length || 0,
+                detail: "Scheduled from today",
+                icon: CalendarDays,
+              },
+            ].map(({ label, value, detail, icon: Icon }) => (
+              <article className="stat-card" key={label}>
+                <div>
+                  <span>{label}</span>
+                  <Icon size={20} />
+                </div>
+                <strong>{value.toString().padStart(2, "0")}</strong>
+                <small>{detail}</small>
+              </article>
+            ))}
+          </section>
+          <div className="dashboard-grid">
+            <section className="panel">
+              <div className="section-heading">
+                <div>
+                  <span className="eyebrow">ON THE CALENDAR</span>
+                  <h2>Upcoming appointments</h2>
+                </div>
+                <Link className="text-link" to="/dashboard/visits">
+                  View all
+                  <ArrowUpRight size={16} />
+                </Link>
+              </div>
+              {upcoming.length ? (
+                upcoming.map((visit) => (
+                  <Link
+                    className="appointment-row"
+                    to={"/dashboard/pets/" + visit.petId?._id}
+                    key={visit._id}
+                  >
+                    <span className="date-tile">
+                      <small>
+                        {new Date(visit.date).toLocaleString("en", {
+                          month: "short",
+                        })}
+                      </small>
+                      {new Date(visit.date).getDate()}
+                    </span>
+                    <div>
+                      <strong>{visit.petId?.name || "Pet unavailable"}</strong>
+                      <small>{formatDate(visit.date, true)}</small>
+                    </div>
+                    <Badge value="scheduled" />
+                    <ArrowRight size={17} />
+                  </Link>
+                ))
+              ) : (
+                <Empty
+                  title="A clear calendar"
+                  detail="Book a visit from a pet’s profile when you’re ready."
+                />
+              )}
+            </section>
+            <section className="panel">
+              <div className="section-heading">
+                <div>
+                  <span className="eyebrow">YOUR REGISTRY</span>
+                  <h2>Recently registered</h2>
+                </div>
+                <Link className="text-link" to="/dashboard/pets">
+                  View all
+                  <ArrowUpRight size={16} />
+                </Link>
+              </div>
+              {pets.data?.length ? (
+                pets.data.slice(0, 4).map((pet) => (
+                  <Link
+                    className="pet-mini"
+                    to={"/dashboard/pets/" + pet._id}
+                    key={pet._id}
+                  >
+                    <span className={"pet-avatar " + pet.petType}>
+                      <PawPrint size={21} />
+                    </span>
+                    <div>
+                      <strong>{pet.name}</strong>
+                      <small>
+                        {pet.breed1} · {pet.rfidNumber}
+                      </small>
+                    </div>
+                    <ArrowUpRight size={17} />
+                  </Link>
+                ))
+              ) : (
+                <Empty
+                  title="Make room for a new friend"
+                  detail="Register your first pet to get started."
+                />
+              )}
+            </section>
+          </div>
+        </>
+      )}
+      <p className="workspace-footer">
+        <PawPrint size={13} /> Connected care for Cagayan de Oro’s companions.
+      </p>
+    </Page>
   );
-};
-
-export default Dashboard;
+}

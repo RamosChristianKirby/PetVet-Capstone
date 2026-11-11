@@ -1,28 +1,33 @@
-import express from 'express';
-import bodyParser from 'body-parser';
-import mongoose from 'mongoose';
-import dotenv from 'dotenv';
-import cors from 'cors';
-import postRoutes from './routes/posts.js';
-import petRoutes from './routes/petRoutes.js'; // Import the new RFID route
-dotenv.config();
+import "dotenv/config";
+import mongoose from "mongoose";
+import { createApp } from "./app.js";
+import { readConfig } from "./config.js";
 
-const app = express();
-
-app.use(bodyParser.json({ limit: "30mb", extended: true }));
-app.use(bodyParser.urlencoded({ limit: "30mb", extended: true }));
-app.use(cors());
-
-app.use('/api', postRoutes);
-app.use('/api/pets', petRoutes); // Use the pet routes here
-
-app.get('/', (req, res) => {
-    res.send('App is running...');
-});
-
-const CONNECTION_URL = 'mongodb+srv://kabyitvv:kirbyxd12@capstoneserver.7m9ce.mongodb.net/?retryWrites=true&w=majority&appName=CapstoneServer';
-const PORT = process.env.PORT || 5000;
-
-mongoose.connect(CONNECTION_URL, { useNewUrlParser: true, useUnifiedTopology: true })
-    .then(() => app.listen(PORT, () => console.log(`Server running on port: ${PORT}`)))
-    .catch((error) => console.log(error.message));
+let config;
+try {
+  config = readConfig();
+} catch (error) {
+  console.error(error.message);
+  process.exit(1);
+}
+try {
+  await mongoose.connect(config.mongoUri, { serverSelectionTimeoutMS: 10000 });
+  const server = createApp(config).listen(config.port, () => {
+    console.log("PetVet API listening on port " + config.port);
+  });
+  const shutdown = () => {
+    const timeout = setTimeout(() => process.exit(1), 10000).unref();
+    server.close(async () => {
+      await mongoose.disconnect();
+      clearTimeout(timeout);
+      process.exit(0);
+    });
+  };
+  process.once("SIGINT", shutdown);
+  process.once("SIGTERM", shutdown);
+} catch {
+  console.error(
+    "Database connection failed. Check MONGODB_URI and network access.",
+  );
+  process.exitCode = 1;
+}

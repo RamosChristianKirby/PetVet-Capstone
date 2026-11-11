@@ -1,4 +1,4 @@
-import React, { ChangeEvent } from 'react';
+import React, { ChangeEvent } from "react";
 
 interface InputProps {
   name?: string;
@@ -11,9 +11,18 @@ interface InputProps {
 
 // Input
 
-const Input: React.FC<InputProps> = ({ name, type = 'text', placeholder, className = '', value, onChange }) => {
+const Input: React.FC<InputProps> = ({
+  name,
+  type = "text",
+  placeholder,
+  className = "",
+  value,
+  onChange,
+}) => {
   return (
-    <div className={`flex items-center border border-neutral-600 py-2 rounded-md mb-4 bg-neutral-800 ${className}`}>
+    <div
+      className={`flex items-center border border-neutral-600 py-2 rounded-md mb-4 bg-neutral-800 ${className}`}
+    >
       <input
         name={name}
         type={type}
